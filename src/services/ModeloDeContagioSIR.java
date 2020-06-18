@@ -1,27 +1,24 @@
 package services;
 
-import entities.PilhaDinamica;
 import entities.Vertice;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
 public class ModeloDeContagioSIR {
 
-    public static final double c = 0.85; //probabilidade de contaminação
-    public static final double r = 0.2; //probabilidade de recuperação
+    public static final double c = 0.63; //probabilidade de contaminação
+    public static final double r = 0.38; //probabilidade de recuperação
     
-    private final Vertice source;
     private final int sourceId;
     private final Random random = new Random();
     
     public ModeloDeContagioSIR(List<Vertice> Grafo){
         sourceId = random.nextInt(Grafo.size());    //escolhendo aleatoriamente um vértice que será o paciente 0
-        this.source = Grafo.get(sourceId);          //paciente 0
-        Grafo.get(sourceId).setSIR('I');
         contagio(Grafo);
     }
     
@@ -33,21 +30,25 @@ public class ModeloDeContagioSIR {
             bw.write("S,I,R");
             bw.newLine();
             
-            PilhaDinamica pilha = new PilhaDinamica();  //pilha de vértices infectados
+            //Lista contendo todos os vértices infectados
+            List<Vertice> infectadosGrafo = new LinkedList<>();
+            
             int[] passos = null;
             
-            //marcando o vértice inicial como infectado e colocando-o na pilha de infectados
+            //marcando o vértice inicial como infectado e colocando-o na lista de infectados
             Grafo.get(sourceId).setSIR('I');
-            Grafo.get(sourceId).setVisitado();
-            pilha.inserirNo(Grafo.get(sourceId));
-
-            while(!pilha.estaVazia()){
-                Vertice v = pilha.removerNo();
+            infectadosGrafo.add(Grafo.get(sourceId));
+            
+            while(!infectadosGrafo.isEmpty()){
+                //recebo o primeiro vértice da lista de infectados
+                Vertice v = infectadosGrafo.remove(0);
+                
                 double x = random.nextDouble();
-
                 if (x <= r){  //se a pessoa se recuperou
-                    Grafo.get(Grafo.indexOf(v)).setSIR('R');
-                    Grafo.get(Grafo.indexOf(v)).setVisitado();  //marca-se um vértice recuperado como visitado
+                    v.setSIR('R'); 
+                    Grafo.get(Grafo.indexOf(v)).setSIR('R');    //marca-se o vértice como recuperado
+                    if(infectadosGrafo.contains(v)) infectadosGrafo.remove(v);   //e remove-o da lista de infectados
+                    
                     passos = frequenciaSIR(Grafo);
                     bw.write(passos[0]+","+passos[1]+","+passos[2]);
                     bw.newLine();
@@ -56,18 +57,20 @@ public class ModeloDeContagioSIR {
                     //visito todos os vértices adjacentes a 'v' e faço uma verificação de possível infecção
                     for(Vertice w : Grafo.get(Grafo.indexOf(v)).getAdj()){
                         double y = random.nextDouble();
-                        //se um vértice nao foi visitado, significa que ele está marcado como S
-                        if(!(Grafo.get(Grafo.indexOf(w)).getVisitado()) && (y <= c)){
+                        
+                        //se um vértice está suscetivel e foi contaminado
+                        if((Grafo.get(Grafo.indexOf(w)).getSIR() == 'S') && (y <= c)){
                             w.setSIR('I');
                             Grafo.get(Grafo.indexOf(w)).setSIR('I');
-                            Grafo.get(Grafo.indexOf(w)).setVisitado();
-                            pilha.inserirNo(Grafo.get(Grafo.indexOf(w)));
+                            if(!infectadosGrafo.contains(w)) infectadosGrafo.add(w);
+                            
                             passos = frequenciaSIR(Grafo);
                             bw.write(passos[0]+","+passos[1]+","+passos[2]);
                             bw.newLine();
                         }
                     }
-                }   
+                } 
+                if(Grafo.get(Grafo.indexOf(v)).getSIR() == 'I' && !infectadosGrafo.contains(v)) infectadosGrafo.add(v);
             }
         } 
         catch(IOException e){ e.getMessage(); }

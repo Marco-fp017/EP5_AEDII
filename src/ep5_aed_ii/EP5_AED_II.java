@@ -93,7 +93,6 @@ public class EP5_AED_II {
                 }
             }
             
-            for(Vertice v : componenteGigante) v.desfazVisitado();
             ModeloDeContagioSIR m = new ModeloDeContagioSIR(componenteGigante);            
         }catch (IOException e){
             e.getMessage();
